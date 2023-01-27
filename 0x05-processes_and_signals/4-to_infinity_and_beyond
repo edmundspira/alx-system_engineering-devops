@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+#infinite loop, add sleep 2 every other iteration
+
+i=1
+while [ $i -eq 1 ]; do
+      echo To infinity and beyond;
+      sleep 2;
+done

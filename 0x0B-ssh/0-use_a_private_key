@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# uses `ssh` to connect to remote server using the private key `~/.ssh/school`
+# with the user `ubuntu`
+
+remote_ip="18.234.192.255"
+remote_user="ubuntu"
+
+ssh -i ~/.ssh/school "$remote_user@$remote_ip"

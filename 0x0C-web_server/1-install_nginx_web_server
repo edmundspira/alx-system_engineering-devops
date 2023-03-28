@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# configures a new Ubuntu machine by installing nginx listening on port 80
+# when quering Nginx at its root `/` with a GET request using `curl`, it must
+#+ return a page that contains the string `Hello World!`
+
+# stop any service using port 80
+for pid in $(sudo lsof -t -i :80); do
+    sudo kill "$pid" &>/dev/null
+done
+
+# update package index and install nginx
+sudo apt-get update;
+sudo apt-get install nginx -y;
+
+# add to firewall
+sudo ufw allow 80/tcp;
+sudo ufw allow 'Nginx HTTP';
+
+# start nginx
+sudo nginx;
+
+# create a new default server block that listens on port 80
+sudo sh -c 'echo "server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    root /var/www/html;
+    index index.html index.htm index.nginx-debian.html;
+    server_name _;
+    location / {
+        try_files \$uri \$uri/ =404;
+    }
+}" > /etc/nginx/sites-available/default';
+
+# reload nginx configuration
+sudo /usr/sbin/nginx -s reload;
+
+# create the html page to display hello world
+sudo sh -c 'echo "<html><body><h1>Hello World!</h1></body></html>" > /var/www/html/index.html';
+
+# test nginx by quering it with a GET request to its root `/` using curl
+if curl -s localhost:80 | grep -q "Hello World!"; then
+    echo "Nginx is listening on port 80";
+else
+    echo "Nginx is not listening on port 80";
+fi;

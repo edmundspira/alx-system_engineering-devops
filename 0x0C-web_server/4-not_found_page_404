@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# configures a new Ubuntu machine by installing nginx listening on port 80
+# when quering Nginx at its root `/` with a GET request using `curl`, it must
+#+ return a page that contains the string `Hello World!`
+#+ and `/redirect_me` is redirected to `301 Moved Permanently`
+#+ and adds a custom 404 page
+
+# stop any service using port 80
+for pid in $(sudo lsof -t -i :80); do
+    sudo kill "$pid" &>/dev/null
+done
+
+# update package index and install nginx
+sudo apt-get update &>/dev/null;
+sudo apt-get install nginx -y &>/dev/null;
+
+# add to firewall
+sudo ufw allow 80/tcp &>/dev/null;
+sudo ufw allow 'Nginx HTTP' &>/dev/null;
+
+# start nginx
+sudo nginx;
+
+# create a custom 404 page
+echo "Ceci n'est pas une page" | sudo tee /var/www/html/404.html &>/dev/null;
+
+# create a new default server block that listens on port 80
+sudo sh -c 'echo "server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name cheezaram.tech;
+
+    # set default behaviour for 404 errors specifying page
+    error_page 404 /404.html;
+    location = /404.html {
+        root /var/www/html/;
+    }
+
+    # move /redirect_me to 301 Moved Permanently
+    rewrite ^/redirect_me http://cheezaram.tech permanent;
+
+    root /var/www/html;
+    index index.html index.htm index.nginx-debian.html;
+
+
+    location / {
+        try_files \$uri \$uri/ =404;
+    }
+}" > /etc/nginx/sites-available/default';
+
+# create the html page to display hello world
+sudo sh -c 'echo "<html><body><h1>Hello World!</h1></body></html>" > /var/www/html/index.html';
+
+# reload nginx configuration
+sudo /usr/sbin/nginx -s reload;
+
+# test nginx by quering it with a GET request to its root `/` using curl
+if curl -s localhost:80 | grep -q "Hello World!"; then
+    echo "Nginx is listening on port 80";
+else
+    echo "Nginx is not listening on port 80";
+fi;

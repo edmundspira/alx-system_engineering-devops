@@ -1,50 +1,44 @@
 #!/usr/bin/python3
-"""
-Uses https://jsonplaceholder.typicode.com along with an employee ID to
-return information about the employee's todo list progress
-"""
-
+"""This module makes a requests to a REST API and uses the data received"""
 import json
 import requests
-from sys import argv
+from sys import argv, stderr
 
 
-def info_to_json():
-    # original answer
-    # url_employee = "https://jsonplaceholder.typicode.com/users/"
-    # employee_info = (requests.get("{}{}".format(
-    # url_employee, argv[1]))).json()
-    # url_tasks = "https://jsonplaceholder.typicode.com/todos?userId="
-    # tasks = (requests.get("{}{}".format(url_tasks, argv[1]))).json()
-    # json_obj = {}
-    # list_of_task = []
-    # for task in tasks:
-    #     task_dict = {}
-    #     task_dict["task"] = task["title"]
-    #     task_dict["completed"] = task["completed"]
-    #     task_dict["username"] = employee_info["name"]
-    #     list_of_task.append(task_dict)
-    # json_obj[str(argv[1])] = list_of_task
-    # with open("{}.json".format(argv[1]), 'w') as f:
-    #     json.dump(json_obj, f)
-    userId = argv[1]
-    user = requests.get("https://jsonplaceholder.typicode.com/users/{}".
-                        format(userId), verify=False).json()
-    todo = requests.get("https://jsonplaceholder.typicode.com/todos?userId={}".
-                        format(userId), verify=False).json()
-    username = user.get('username')
-    tasks = []
-    for task in todo:
-        task_dict = {}
-        task_dict["task"] = task.get('title')
-        task_dict["completed"] = task.get('completed')
-        task_dict["username"] = username
-        tasks.append(task_dict)
-    jsonobj = {}
-    jsonobj[userId] = tasks
-    with open("{}.json".format(userId), 'w') as jsonfile:
-        json.dump(jsonobj, jsonfile)
+base_url = "https://jsonplaceholder.typicode.com"
+
+
+def gather_data_and_log_to_json(user_id: str):
+    """Gathers data from an API and export info about all tasks for employee"""
+
+    # Send GET requests to retrieve employee data
+    response = requests.get("{}/users/{}".format(base_url, user_id))
+    if response.status_code != 200:
+        stderr.write("Employee with id [{}] not found\n".format(user_id))
+        exit(1)
+
+    employee = response.json()
+
+    # Send GET requests to retrieve employee's tasks
+    response = requests.get("{}/todos?userId={}".format(base_url, user_id))
+    if response.status_code != 200:
+        stderr.write("TODO list not found\n")
+        exit(1)
+
+    tasks = response.json()
+
+    file_name = "{}.json".format(user_id)
+    all_task_data = [{"task": task.get("title"), "completed": task.get(
+        "completed"), "username": employee.get("username")} for task in tasks]
+
+    with open(file_name, mode="w", newline="") as json_file:
+        json.dump({user_id: all_task_data}, json_file, indent=2)
 
 
 if __name__ == "__main__":
-    info_to_json()
+    """Start of program"""
+    if len(argv) != 2 or not argv[1].isdigit():
+        stderr.write("Usage: {} <id>\n".format(argv[0]))
+        exit(1)
+
+    gather_data_and_log_to_json(argv[1])

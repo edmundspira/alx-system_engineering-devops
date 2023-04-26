@@ -1,58 +1,48 @@
 #!/usr/bin/python3
-"""
-Uses https://jsonplaceholder.typicode.com along with an employee ID to
-return information about the employee's todo list progress
-"""
-
+"""This module makes a request to a REST API and uses the data received"""
 import json
 import requests
+from sys import stderr
 
 
-def info_to_json():
-    # original answer
-    # url_employee = "https://jsonplaceholder.typicode.com/users/"
-    # all_employees = (requests.get(url_employee)).json()
-    # url_tasks = "https://jsonplaceholder.typicode.com/todos?userId="
-    # json_obj = {}
-    # for employee in all_employees:
-    #     employee_info = (requests.get("{}{}".format(
-    #         url_employee,
-    #         str(employee["id"])
-    #     ))).json()
-    #     tasks = (requests.get("{}{}".format(
-    #         url_tasks,
-    #         str(employee["id"])
-    #     ))).json()
-    #     list_of_task = []
-    #     for task in tasks:
-    #         task_dict = {}
-    #         task_dict["username"] = employee_info["name"]
-    #         task_dict["task"] = task["title"]
-    #         task_dict["completed"] = task["completed"]
-    #         list_of_task.append(task_dict)
-    #     json_obj[str(employee["id"])] = list_of_task
-    # with open("todo_all_employees.json", 'w') as f:
-    #     json.dump(json_obj, f)
-    users = requests.get("https://jsonplaceholder.typicode.com/users",
-                         verify=False).json()
-    userdict = {}
-    usernamedict = {}
+base_url = "https://jsonplaceholder.typicode.com"
+
+
+def gather_all_and_log_to_json():
+    """Gathers data from an API, exports info about all tasks for all users"""
+
+    # Send GET request to retrieve data on all users
+    response = requests.get("{}/users".format(base_url))
+    if response.status_code != 200:
+        stderr.write("No users available\n")
+        exit(1)
+
+    file_name = "todo_all_employees.json"
+    users = response.json()
+    users_dict = {}
+
     for user in users:
-        uid = user.get("id")
-        userdict[uid] = []
-        usernamedict[uid] = user.get("username")
-    todo = requests.get("https://jsonplaceholder.typicode.com/todos",
-                        verify=False).json()
-    for task in todo:
-        taskdict = {}
-        uid = task.get("userId")
-        taskdict["task"] = task.get('title')
-        taskdict["completed"] = task.get('completed')
-        taskdict["username"] = usernamedict.get(uid)
-        userdict.get(uid).append(taskdict)
-    with open("todo_all_employees.json", 'w') as jsonfile:
-        json.dump(userdict, jsonfile)
+        user_id = user.get("id")
+        username = user.get("username")
+        name = user.get("name")
+
+        # Send GET request to retrieve employee's tasks
+        response = requests.get("{}/todos?userId={}".format(base_url, user_id))
+        if response.status_code != 200:
+            stderr.write(
+                "TODO list not found for {}\n".format(name))
+            exit(1)
+
+        tasks = response.json()
+        all_task_data = [{"username": username, "task": task.get(
+            "title"), "completed": task.get("completed")} for task in tasks]
+
+        users_dict[user_id] = all_task_data
+
+    with open(file_name, mode="w", newline="") as json_file:
+        json.dump(users_dict, json_file, indent=2)
 
 
 if __name__ == "__main__":
-    info_to_json()
+    """Start of program"""
+    gather_all_and_log_to_json()

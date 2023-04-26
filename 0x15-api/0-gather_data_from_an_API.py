@@ -1,26 +1,46 @@
 #!/usr/bin/python3
 """
-script that, using this REST API, for a given employee ID,
-returns information about his/her TODO list progress
+Uses https://jsonplaceholder.typicode.com along with an employee ID to
+return information about the employee's todo list progress
 """
 
-
 import requests
-import sys
+from sys import argv
+
+
+def get_info():
+    # ORIGINAL ANSWER
+    # url_employee = "https://jsonplaceholder.typicode.com/users/"
+    # employee_info = (requests.get("{}{}".format(
+    # url_employee, argv[1]))).json()
+    # url_tasks = "https://jsonplaceholder.typicode.com/todos?userId="
+    # tasks_info = (requests.get("{}{}".format(url_tasks, argv[1]))).json()
+    # total_tasks = 0
+    # completed_tasks = list()
+    # for task in tasks_info:
+    #     total_tasks += 1
+    #     if task["completed"] is True:
+    #         completed_tasks.append(task)
+    # print("Employee {} is done with tasks ({}/{}):".format(
+    #     employee_info["name"],
+    #     len(completed_tasks),
+    #     total_tasks,
+    # ))
+    # for task in completed_tasks:
+    #     print("\t {}".format(task["title"]))
+    userId = argv[1]
+    user = requests.get("https://jsonplaceholder.typicode.com/users/{}".
+                        format(userId), verify=False).json()
+    todo = requests.get("https://jsonplaceholder.typicode.com/todos?userId={}".
+                        format(userId), verify=False).json()
+    completed_tasks = []
+    for task in todo:
+        if task.get('completed') is True:
+            completed_tasks.append(task.get('title'))
+    print("Employee {} is done with tasks({}/{}):".
+          format(user.get('name'), len(completed_tasks), len(todo)))
+    print("\n".join("\t {}".format(task) for task in completed_tasks))
 
 
 if __name__ == "__main__":
-    root = "https://jsonplaceholder.typicode.com"
-    users = requests.get(root + "/users", params={"id": sys.argv[1]})
-    for names in users.json():
-        usr_id = names.get('id')
-        todo = requests.get(root + "/todos", params={"userId": usr_id})
-        task_complete = 0
-        tasks_array = []
-        for tasks in todo.json():
-            if tasks.get('completed') is True:
-                task_complete += 1
-                tasks_array.append(tasks.get('title'))
-        print("Employee {:s} is done with tasks({:d}/{:d}):\n\t {}".
-              format(names.get('name'), task_complete,
-                     len(todo.json()), "\n\t ".join(tasks_array)))
+    get_info()

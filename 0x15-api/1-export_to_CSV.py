@@ -1,32 +1,43 @@
 #!/usr/bin/python3
 """
-Records all tasks that are owned by this employee
-Format must be: "USER_ID","USERNAME","TASK_COMPLETED_STATUS","TASK_TITLE"
-File name must be: USER_ID.csv
+Uses https://jsonplaceholder.typicode.com along with an employee ID to
+return information about the employee's todo list progress
 """
+
 import csv
 import requests
 from sys import argv
 
 
-def main():
-    """ returns TODO list """
-    total = 0
-    complete = 0
-    user_url = "https://jsonplaceholder.typicode.com/users/"
-    task_url = "https://jsonplaceholder.typicode.com/todos?userId="
-    user = requests.get('{}{}'.format(user_url, argv[1])).json()
-    tasks = requests.get('{}{}'.format(task_url, argv[1])).json()
+def info_to_csv():
+    # original answer
+    # url_employee = "https://jsonplaceholder.typicode.com/users/"
+    # employee_info = (requests.get("{}{}".format(
+    # url_employee, argv[1]))).json()
+    # url_tasks = "https://jsonplaceholder.typicode.com/todos?userId="
+    # tasks_info = (requests.get("{}{}".format(url_tasks, argv[1]))).json()
 
-    for task in tasks:
-        task['username'] = user['username']
-        del task['id']
+    # with open("{}.csv".format(argv[1]), 'w') as f:
+    #     csv_writer = csv.writer(f, quoting=csv.QUOTE_ALL)
+    #     for task in tasks_info:
+    #         csv_writer.writerow([
+    #             int(task["userId"]),
+    #             str(employee_info["name"]),
+    #             str(task["completed"]),
+    #             str(task["title"])
+    #         ])
+    userId = argv[1]
+    user = requests.get("https://jsonplaceholder.typicode.com/users/{}".
+                        format(userId), verify=False).json()
+    todo = requests.get("https://jsonplaceholder.typicode.com/todos?userId={}".
+                        format(userId), verify=False).json()
+    with open("{}.csv".format(userId), 'w', newline='') as csvfile:
+        taskwriter = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
+        for task in todo:
+            taskwriter.writerow([int(userId), user.get('username'),
+                                 task.get('completed'),
+                                 task.get('title')])
 
-    with open("{}.csv".format(argv[1]), 'w') as f:
-        fieldnames = ["userId", "username", "completed", "title"]
-        dict_writer = csv.DictWriter(f, fieldnames=fieldnames,
-                                     quoting=csv.QUOTE_ALL)
-        dict_writer.writerows(tasks)
 
 if __name__ == "__main__":
-    main()
+    info_to_csv()

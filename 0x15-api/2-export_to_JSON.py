@@ -1,28 +1,50 @@
 #!/usr/bin/python3
 """
-Records all tasks that are owned by this employee
-Format must be: { "USER_ID": [ {"task": "TASK_TITLE", "completed":
-TASK_COMPLETED_STATUS,"username":"USERNAME"}},{"task":"TASK_TITLE","completed":
-TASK_COMPLETED_STATUS, "username": "USERNAME"}}, ... ]}
-File name must be: USER_ID.json
+Uses https://jsonplaceholder.typicode.com along with an employee ID to
+return information about the employee's todo list progress
 """
-from json import dump
+
+import json
 import requests
 from sys import argv
 
 
+def info_to_json():
+    # original answer
+    # url_employee = "https://jsonplaceholder.typicode.com/users/"
+    # employee_info = (requests.get("{}{}".format(
+    # url_employee, argv[1]))).json()
+    # url_tasks = "https://jsonplaceholder.typicode.com/todos?userId="
+    # tasks = (requests.get("{}{}".format(url_tasks, argv[1]))).json()
+    # json_obj = {}
+    # list_of_task = []
+    # for task in tasks:
+    #     task_dict = {}
+    #     task_dict["task"] = task["title"]
+    #     task_dict["completed"] = task["completed"]
+    #     task_dict["username"] = employee_info["name"]
+    #     list_of_task.append(task_dict)
+    # json_obj[str(argv[1])] = list_of_task
+    # with open("{}.json".format(argv[1]), 'w') as f:
+    #     json.dump(json_obj, f)
+    userId = argv[1]
+    user = requests.get("https://jsonplaceholder.typicode.com/users/{}".
+                        format(userId), verify=False).json()
+    todo = requests.get("https://jsonplaceholder.typicode.com/todos?userId={}".
+                        format(userId), verify=False).json()
+    username = user.get('username')
+    tasks = []
+    for task in todo:
+        task_dict = {}
+        task_dict["task"] = task.get('title')
+        task_dict["completed"] = task.get('completed')
+        task_dict["username"] = username
+        tasks.append(task_dict)
+    jsonobj = {}
+    jsonobj[userId] = tasks
+    with open("{}.json".format(userId), 'w') as jsonfile:
+        json.dump(jsonobj, jsonfile)
+
+
 if __name__ == "__main__":
-    new_list = []
-    user = requests.get("https://jsonplaceholder.typicode.com/users/{}"
-                        .format(argv[1])).json()
-    url = "https://jsonplaceholder.typicode.com/todos"
-    for task in requests.get(url).json():
-        if user["id"] == task["userId"]:
-            task_dict = {}
-            task_dict["task"] = task["title"]
-            task_dict["completed"] = task["completed"]
-            task_dict["username"] = user["username"]
-            new_list.append(task_dict)
-    result = {str(argv[1]): new_list}
-    with open(argv[1] + ".json", 'w') as file:
-        dump(result, file)
+    info_to_json()

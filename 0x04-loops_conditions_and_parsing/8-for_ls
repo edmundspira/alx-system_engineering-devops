@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Displays the names of files in the current directory after then '-', each on
+#+ on a new line
+
+NAMES="$( ls )"
+
+for name in $NAMES; do
+    echo "$name" | cut -d "-" -f 2-
+done

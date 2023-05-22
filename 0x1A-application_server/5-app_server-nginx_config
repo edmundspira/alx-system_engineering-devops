@@ -24,17 +24,14 @@ server {
 	server_name 35.237.54.178;
 
 	location /airbnb-onepage/ {
-		include proxy_params;
 		proxy_pass http://0.0.0.0:5000;
 	}
 
 	location /airbnb-dynamic/number_odd_or_even/ {
-		include proxy_params;
 		proxy_pass http://0.0.0.0:5001/number_odd_or_even/;
 	}
 
 	location /api/ {
-		include proxy_params;
 		proxy_pass http://0.0.0.0:5002;
 	}
 
@@ -64,7 +61,12 @@ server {
         location / {
                 # First attempt to serve request as file, then
                 # as directory, then fall back to displaying a 404.
+		proxy_pass http://0.0.0.0:5003/2-hbnb/;
                 try_files $uri $uri/ =404;
+        }
+
+        location /static/ {
+		root /home/ubuntu/AirBnB_clone_v4/web_dynamic/;
         }
 
         # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000

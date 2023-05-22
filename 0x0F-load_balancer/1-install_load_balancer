@@ -1,21 +1,64 @@
 #!/usr/bin/env bash
-# Install and configure HAproxy on your lb-01 server
+# Install and configures `HAproxy` on a server.
 
-sudo apt-get -y update
-sudo apt-get -y install haproxy
-sudo sed -i "9i ENABLED=1" /etc/default/haproxy
-cat >> /etc/haproxy/haproxy.cfg <<EOF
+# update the package index
+sudo apt update &>/dev/null
 
-frontend haproxynode
-    bind *:80
-    mode http
-    default_backend backendnodes
+# install HAproxy if not already installed
+if ! command -v haproxy &> /dev/null; then
+    echo "Installing HAproxy..."
+    sudo apt install haproxy -y &>/dev/null
+fi
 
-backend backendnodes
-    balance roundrobin
-    server 840-web-01 35.237.225.4:80
-    server 840-web-02 34.74.173.192:80
-EOF
+# add our frontend and backend configs
+if ! sudo cat /etc/haproxy/haproxy.cfg | grep -q "backend servers"; then
+    # create backup of default config file
+    echo "Creating backup of default haproxy config file..."
+    sudo cp /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg.bak
 
-sudo service haproxy reload
-sudo service haproxy restart
+    echo "Adding frontend and backend configs..."
+    sudo sh -c 'echo "
+frontend http-in
+        bind *:80
+        mode http
+        default_backend servers
+
+backend servers
+        balance roundrobin
+        server 134169-web-01 18.234.192.255:80 check
+        server 134169-web-02 54.164.58.89:80 check
+" >> /etc/haproxy/haproxy.cfg'
+fi
+
+# test the HAproxy config
+echo "Testing HAproxy config..."
+if sudo haproxy -c -f /etc/haproxy/haproxy.cfg; then
+    echo "HAproxy config is OK"
+else
+    echo -e "HAproxy config is NOT OK\nCheck the log for more details"
+    exit 1
+fi
+
+# make sure HAproxy starts on boot
+echo "Making sure HAproxy starts on boot..."
+sudo systemctl enable haproxy &>/dev/null
+
+# restart HAproxy
+echo "Restarting HAproxy..."
+sudo service haproxy restart &>/dev/null
+
+# check if netstat is installed before using it
+if ! command -v netstat &> /dev/null; then
+    sudo apt install net-tools -y &>/dev/null;
+fi
+
+# verify HAproxy is running and listening on port 80
+echo "Verifying HAproxy is running and listening on port 80..."
+if sudo lsof -i :80 | grep -q haproxy; then
+    echo "HAproxy is running and listening on port 80"
+else
+    echo -e "HAproxy is NOT running on port 80\nCheck the log for more details"
+    exit 1
+fi
+
+echo "All Done!"

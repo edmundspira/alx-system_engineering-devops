@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+# configures a new Ubuntu machine by installing nginx listening on port 80
+# when quering Nginx at its root `/` with a GET request using `curl`, it must
+#+ return a page that contains the string `Hello World!`
+#+ and `/redirect_me` is redirected to `301 Moved Permanently`
+#+ and adds a custom 404 page
+# setup docker on the server
+# add a custom header to the server response
+
+# stop any service using port 80
+sudo service "$(sudo lsof -i :80 | grep LISTEN | awk '{print $1}' | head -n 1)" stop &>/dev/null
+
+# update package index and install nginx
+sudo apt-get update &>/dev/null;
+
+if ! which nginx &>/dev/null; then
+    echo "Installing nginx..."
+    sudo apt-get install nginx -y &>/dev/null;
+fi
+
+# add to firewall
+sudo ufw allow OpenSSH &>/dev/null;
+sudo ufw allow 80/tcp &>/dev/null;
+sudo ufw allow 'Nginx HTTP' &>/dev/null;
+
+echo "Enabling ufw firewall..."
+# sudo ufw enable;
+
+# start nginx
+echo "Starting nginx..."
+sudo service nginx start;
+
+# create a custom 404 page
+echo "Setting up custom 404 page..."
+echo "Ceci n'est pas une page" | sudo tee /var/www/html/404.html &>/dev/null;
+
+# create a new default server block that listens on port 80
+echo "Creating default server block..."
+sudo sh -c 'echo "server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name cheezaram.tech;
+
+    # move /redirect_me to 301 Moved Permanently
+    rewrite ^/redirect_me\$ http://cheezaram.tech permanent;
+
+    root /var/www/html;
+    index index.html index.htm index.nginx-debian.html;
+
+    location / {
+        try_files \$uri \$uri/ =404;
+        error_page 404 /404.html;
+    }
+
+    # set default behaviour for 404 errors specifying page
+    location = /404.html {
+        root /var/www/html;
+    }
+}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name www.cheezaram.tech;
+
+    return 301 \$scheme://cheezaram.tech\$request_uri;
+}" > /etc/nginx/sites-available/default';
+
+# create the html page to display hello world
+echo "Populating index.html..."
+sudo sh -c 'echo "<html><body><h1>Hello World!</h1></body></html>" > /var/www/html/index.html';
+
+# reload nginx configuration
+sudo /usr/sbin/nginx -s reload;
+
+# test nginx by quering it with a GET request to its root `/` using curl
+if curl -s localhost:80 | grep -q "Hello World!"; then
+    echo "Nginx is listening on port 80";
+else
+    echo "Nginx is not listening on port 80";
+    exit 1;
+fi;
+
+# confirm docker is installed
+# if ! (sudo docker --version | grep -q "Docker version"); then
+#     # install docker
+#     sudo apt install apt-transport-https ca-certificates curl software-properties-common -y &>/dev/null;
+#     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - &>/dev/null;
+#     sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable" &>/dev/null;
+#
+#     echo "Installing docker..."
+#     sudo apt install docker-ce -y &>/dev/null;
+#     echo "docker is installed";
+# fi
+#
+# if sudo docker --version | grep -q "Docker version"; then
+#     echo "docker is installed";
+# else
+#     echo "docker failed to install";
+#     exit 1;
+# fi
+#
+# # add user to docker group
+# echo "Adding ${USER} to docker group";
+# sudo usermod -aG docker "${USER}";
+# echo "docker group is added";
+
+# add custom header to the server response
+header_name="X-Served-By"
+header_value=$(hostname)
+
+if ! grep -q "add_header \"$header_name\" \"$header_value\"" /etc/nginx/nginx.conf; then
+    sudo sed -i "s/# server_tokens off;/&\n\tadd_header \"$header_name\" \"$header_value\";/" /etc/nginx/nginx.conf
+    echo "$header_name custom header set to $header_value";
+fi
+
+if sudo /usr/sbin/nginx -s reload; then
+    echo "Nginx reloaded successfully";
+else
+    echo "Nginx failed to reload";
+    exit 1;
+fi
+
+echo "All Done!";
